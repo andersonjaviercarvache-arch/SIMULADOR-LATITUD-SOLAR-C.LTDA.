@@ -243,24 +243,3 @@ def generar_pdf():
     return pdf.output(dest='S').encode('latin-1')
 
 st.sidebar.download_button("📥 Descargar Propuesta PDF", data=generar_pdf(), file_name=f"Propuesta_{nombre_cliente}.pdf")
-# --- Lógica de texto dinámico para el PDF ---
-    if tipo_proyecto == "Comercial":
-        explicacion_retorno = (
-            f"El retorno de inversión estimado es de {payback_exacto:.1f} años. "
-            f"Este resultado es el efecto combinado del ahorro operativo por energía y el "
-            f"escudo fiscal derivado de la depreciación acelerada aplicada en {años_beneficio} año(s). "
-            f"Al finalizar este período, el flujo de caja positivo resultante genera un saldo a favor "
-            f"continuo para su empresa, maximizando la rentabilidad del proyecto."
-        )
-    else:
-        explicacion_retorno = (
-            f"El retorno de inversión estimado es de {payback_exacto:.1f} años, "
-            f"basado exclusivamente en el ahorro operativo generado por la autogeneración "
-            f"de energía, transformando su planilla eléctrica en un saldo a favor para su presupuesto."
-        )
-
-    # --- Inserción en el PDF ---
-    pdf.ln(8); pdf.set_fill_color(240, 240, 240)
-    pdf.set_font('Arial', 'B', 10); pdf.cell(0, 8, 'RESUMEN EJECUTIVO: VIABILIDAD FINANCIERA', 0, 1, 'L', fill=True)
-    pdf.set_font('Arial', '', 9); pdf.ln(2)
-    pdf.multi_cell(0, 5, explicacion_retorno)
