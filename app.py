@@ -123,13 +123,13 @@ with st.container():
     r1.metric("Ahorro Año 1 (Suma de Ambos)", f"${(ahorro_en_y1 + benef_trib_y1):,.2f}")
     r2.metric("Inversión a Recuperar", f"${inv_final:,.2f}")
     
-    # Muestra el resultado dinámico exacto de cuándo se recuperará la inversión
+    # Muestra el resultado dinámico exacto modificado a 1 decimal (:.1f)
     if payback_exacto:
         if payback_exacto < 1:
             meses = round(payback_exacto * 12)
-            texto_retorno = f"{payback_exacto:.2f} años (~ {meses} meses)"
+            texto_retorno = f"{payback_exacto:.1f} años (~ {meses} meses)"
         else:
-            texto_retorno = f"{payback_exacto:.2f} años"
+            texto_retorno = f"{payback_exacto:.1f} años"
     else:
         texto_retorno = "> 30 años"
         
@@ -165,10 +165,10 @@ if tipo_proyecto == "Comercial" and años_beneficio > 0:
     ax_app.axvspan(0, años_beneficio, color='#f1c40f', alpha=0.12, 
                    label=f'Incentivo Tributario Activo ({años_beneficio} añ.)')
 
-# REFLEJO EXACTO DEL RETORNO EN EL GRÁFICO
+# REFLEJO EXACTO DEL RETORNO EN EL GRÁFICO MODIFICADO A 1 DECIMAL (:.1f)
 if payback_exacto:
-    ax_app.plot(payback_exacto, inv_final, marker='*', markersize=15, color='#f1c40f', label=f'Punto de Equilibrio: {payback_exacto:.2f} años')
-    ax_app.annotate(f'Retorno: {payback_exacto:.2f} años', xy=(payback_exacto, inv_final), xytext=(payback_exacto, inv_final * 1.15),
+    ax_app.plot(payback_exacto, inv_final, marker='*', markersize=15, color='#f1c40f', label=f'Punto de Equilibrio: {payback_exacto:.1f} años')
+    ax_app.annotate(f'Retorno: {payback_exacto:.1f} años', xy=(payback_exacto, inv_final), xytext=(payback_exacto, inv_final * 1.15),
                     fontweight='bold', color='#2c3e50', arrowprops=dict(facecolor='#2c3e50', shrink=0.08, width=1, headwidth=6))
 
 ax_app.set_ylabel("Dólares (USD)")
