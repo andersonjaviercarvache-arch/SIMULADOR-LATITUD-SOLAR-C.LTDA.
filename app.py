@@ -243,3 +243,11 @@ def generar_pdf():
     return pdf.output(dest='S').encode('latin-1')
 
 st.sidebar.download_button("📥 Descargar Propuesta PDF", data=generar_pdf(), file_name=f"Propuesta_{nombre_cliente}.pdf")
+st.success("### 📜 Resumen Ejecutivo de Viabilidad Financiera")
+st.markdown("""
+Como resultado de la ingeniería financiera aplicada a este proyecto, el período estimado para la **recuperación total de su capital es de solo 1.4 años**.
+
+Este extraordinario tiempo de retorno no se logra de forma aislada, sino que es el resultado directo de la **suma del ahorro anual en energía** (reducción inmediata de su planilla eléctrica) **más el beneficio tributario anual** derivado de la depreciación de la planta (escudo fiscal en el impuesto a la renta). 
+
+Al combinar ambos flujos, la inversión se amortiza por completo en tiempo récord, transformando el proyecto en una fuente de alta rentabilidad y liquidez para su empresa desde el primer día.
+""")
