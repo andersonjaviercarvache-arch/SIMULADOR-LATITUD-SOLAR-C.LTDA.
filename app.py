@@ -69,12 +69,22 @@ with c_inv1:
 with c_inv2:
     st.number_input("Costo por kWp (USD)", key="costo_kwp", on_change=sync_kwp)
 with c_inv3:
-    tasa_incentivo = 0.10 if tipo_proyecto == "Comercial" else 0.0
-    st.info(f"Beneficio Tributario: {tasa_incentivo:.0%} anual (Primeros 2 años)")
+    # NUEVO: Campo para ingresar a cuántos años se aplican los beneficios tributarios
+    años_beneficio = st.number_input("Años de Beneficio Tributario", min_value=1, max_value=10, value=2, step=1)
+    tasa_incentivo_total = 0.10 if tipo_proyecto == "Comercial" else 0.0
+    
+    # Cálculo del porcentaje anual dinámico (100% para 1 año, 50% para 2 años, etc.)
+    porcentaje_distribucion = (1.0 / años_beneficio) if años_beneficio > 0 else 0
+    porcentaje_anual_real = tasa_incentivo_total * porcentaje_distribucion
+    
+    st.info(f"Beneficio: {tasa_incentivo_total:.0%} total del proyecto distribuido al {porcentaje_distribucion:.2%} anual por {años_beneficio} años.")
 
 # --- BLOQUE 3: FLUJO DE CAJA ---
 inv_final = st.session_state.inv_total
-ahorro_trib_anual = inv_final * tasa_incentivo
+
+# El ahorro anual real toma la inversión total, calcula el 10% y aplica la fracción del año elegido
+ahorro_trib_anual = inv_final * porcentaje_anual_real
+
 data_rows, años, acumulados = [], [], []
 balance_acumulado, payback_year = 0, None
 
@@ -83,8 +93,8 @@ for año in range(1, 31):
     prod_anual = generacion_y1 * factor_deg
     ahorro_energetico = prod_anual * costo_kwh
     
-    # CAMBIO AQUÍ: El beneficio extra ahora solo aplica si el año es <= 2
-    beneficio_extra = ahorro_trib_anual if año <= 2 else 0
+    # El beneficio tributario se aplica de manera dinámica según los años ingresados por el usuario
+    beneficio_extra = ahorro_trib_anual if año <= años_beneficio else 0
     
     total_año = ahorro_energetico + beneficio_extra
     balance_acumulado += total_año
