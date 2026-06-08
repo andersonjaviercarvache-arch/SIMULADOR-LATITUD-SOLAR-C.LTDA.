@@ -78,71 +78,102 @@ with c_inv3:
         porcentaje_distribucion = 0.0
         st.info("El beneficio tributario aplica únicamente para proyectos Comerciales.")
 
-# --- BLOQUE 3: FLUJO DE CAJA ---
+# --- BLOQUE 3: FLUJO DE CAJA Y CÁLCULO DE RETORNO ---
 inv_final = st.session_state.inv_total
 ahorro_trib_anual_usd = inv_final * (porcentaje_distribucion / 100.0)
 
 data_rows, años, acumulados = [], [], []
-balance_acumulado, payback_year = 0, None
+balance_acumulado = 0
+payback_exacto = None
 
 for año in range(1, 31):
     factor_deg = (1 - deg_y1) * ((1 - atenuacion)**(año-1)) if año > 1 else (1 - deg_y1)
     prod_anual = generacion_y1 * factor_deg
     ahorro_energetico = prod_anual * costo_kwh
     
-    # Aplicar el beneficio en USD solo si el año actual está dentro del rango elegido y es Comercial
+    # Aplicar el beneficio en USD de acuerdo a la cantidad de años seleccionada
     beneficio_extra = ahorro_trib_anual_usd if (año <= años_beneficio and tipo_proyecto == "Comercial") else 0
     
-    # LÓGICA SOLICITADA: El retorno de inversión es el resultado de la SUMA de ambos ahorros
+    # SUMA DE AMBOS AHORROS: Lógica fundamental solicitada
     total_año = ahorro_energetico + beneficio_extra
+    
+    # Cálculo exacto fraccional del Retorno de Inversión
+    if payback_exacto is None and (balance_acumulado + total_año) >= inv_final:
+        remand_por_recuperar = inv_final - balance_acumulado
+        payback_exacto = (año - 1) + (remand_por_recuperar / total_año)
+    
     balance_acumulado += total_año
+    años.append(año)
+    acumulados.append(balance_acumulado)
     
-    # Determinamos el año exacto en el que el acumulado combinando ambos supera la inversión inicial
-    if balance_acumulado >= inv_final and payback_year is None: 
-        payback_year = año
-    
-    años.append(año); acumulados.append(balance_acumulado)
     data_rows.append({
         "Año": año, "Ind. Deg.": f"-{factor_deg:.3f}", "Prod. kWh": f"{prod_anual:,.0f}",
         "Ahorro Energía": f"${ahorro_energetico:,.2f}", "Ahorro Trib.": f"${beneficio_extra:,.2f}",
         "Ahorro Año": f"${total_año:,.2f}", "Acumulado": f"${balance_acumulado:,.2f}"
     })
 
-# Mostrar métricas de Retorno Combinado en la App
+# --- BLOQUE DE MÉTRICAS INDICADORAS ---
 with st.container():
-    st.markdown("### 📈 Resumen del Retorno Combinado")
+    st.markdown("### 📊 Análisis de Retorno de Inversión")
     r1, r2, r3 = st.columns(3)
+    
     ahorro_en_y1 = generacion_y1 * (1 - deg_y1) * costo_kwh
     benef_trib_y1 = ahorro_trib_anual_usd if tipo_proyecto == "Comercial" else 0
     
-    r1.metric("Ahorro Energía (Año 1)", f"${ahorro_en_y1:,.2f}")
-    r2.metric("Ahorro Tributario (Año 1)", f"${benef_trib_y1:,.2f}")
-    # Visualización explícita de la suma de ambos retornos
-    r3.metric("Ahorro Total Combinado (Año 1)", f"${(ahorro_en_y1 + benef_trib_y1):,.2f}", delta="Energía + Tributario")
+    r1.metric("Ahorro Año 1 (Suma de Ambos)", f"${(ahorro_en_y1 + benef_trib_y1):,.2f}")
+    r2.metric("Inversión a Recuperar", f"${inv_final:,.2f}")
+    
+    # Muestra el resultado dinámico exacto de cuándo se recuperará la inversión
+    if payback_exacto:
+        if payback_exacto < 1:
+            meses = round(payback_exacto * 12)
+            texto_retorno = f"{payback_exacto:.2f} años (~ {meses} meses)"
+        else:
+            texto_retorno = f"{payback_exacto:.2f} años"
+    else:
+        texto_retorno = "> 30 años"
+        
+    r3.metric("⏱️ Tiempo de Recuperación Real", texto_retorno)
 
 # Tabla en la App
 st.subheader("📊 Tabla de Proyección")
-st.caption("Nota: El 'Ahorro Año' y el 'Acumulado' son el resultado directo de sumar el Ahorro de Energía + el Ahorro Tributario.")
 st.dataframe(pd.DataFrame(data_rows), use_container_width=True)
 
-# --- GRÁFICO EN LA APP ---
-st.subheader("📈 Análisis de Retorno de Inversión")
+# --- GRÁFICO MEJORADO (CON BASE EN AÑO 0 E INTERSECCIÓN EXACTA) ---
+st.subheader("📈 Gráfico de Recuperación de Capital")
 plt.style.use('ggplot')
 fig_app, ax_app = plt.subplots(figsize=(10, 5))
-ax_app.plot(años, acumulados, color='#1f77b4', marker='o', linewidth=2, label='Ahorro Acumulado (Energía + Tributario)')
-ax_app.axhline(y=inv_final, color='#e74c3c', linestyle='--', linewidth=2, label='Inversión Inicial')
-ax_app.fill_between(años, acumulados, inv_final, where=(pd.Series(acumulados) >= inv_final), 
+
+# Agregar el punto cero para que el gráfico inicie correctamente en el origen financiero
+plot_años = [0] + años
+plot_acumulados = [0] + acumulados
+
+años_ser = pd.Series(plot_años)
+acumulados_ser = pd.Series(plot_acumulados)
+
+ax_app.plot(años_ser, acumulados_ser, color='#1f77b4', marker='o', linewidth=2, label='Ahorro Acumulado (Energía + Tributario)')
+ax_app.axhline(y=inv_final, color='#e74c3c', linestyle='--', linewidth=2, label='Línea de Inversión')
+
+# Áreas de color dinámicas
+ax_app.fill_between(años_ser, acumulados_ser, inv_final, where=(acumulados_ser >= inv_final), 
                 interpolate=True, color='green', alpha=0.2, label='Ganancia Neta')
-ax_app.fill_between(años, acumulados, inv_final, where=(pd.Series(acumulados) < inv_final), 
+ax_app.fill_between(años_ser, acumulados_ser, inv_final, where=(acumulados_ser < inv_final), 
                 interpolate=True, color='red', alpha=0.1, label='Periodo de Recuperación')
 
-if payback_year:
-    ax_app.plot(payback_year, inv_final, marker='*', markersize=15, color='#f1c40f', label='Punto de Equilibrio (Suma de Ahorros)')
-    ax_app.annotate(f'Año {payback_year}', xy=(payback_year, inv_final), xytext=(payback_year, inv_final*1.1),
-                    fontweight='bold', color='#2c3e50')
+# Marcar la Ventana de incentivo fiscal seleccionada
+if tipo_proyecto == "Comercial" and años_beneficio > 0:
+    ax_app.axvspan(0, años_beneficio, color='#f1c40f', alpha=0.12, 
+                   label=f'Incentivo Tributario Activo ({años_beneficio} añ.)')
+
+# REFLEJO EXACTO DEL RETORNO EN EL GRÁFICO
+if payback_exacto:
+    ax_app.plot(payback_exacto, inv_final, marker='*', markersize=15, color='#f1c40f', label=f'Punto de Equilibrio: {payback_exacto:.2f} años')
+    ax_app.annotate(f'Retorno: {payback_exacto:.2f} años', xy=(payback_exacto, inv_final), xytext=(payback_exacto, inv_final * 1.15),
+                    fontweight='bold', color='#2c3e50', arrowprops=dict(facecolor='#2c3e50', shrink=0.08, width=1, headwidth=6))
 
 ax_app.set_ylabel("Dólares (USD)")
 ax_app.set_xlabel("Años")
+ax_app.set_xlim(0, 30.5)
 ax_app.yaxis.set_major_formatter(mtick.StrMethodFormatter('${x:,.0f}'))
 ax_app.legend(loc='upper left')
 st.pyplot(fig_app)
@@ -179,11 +210,10 @@ def generar_pdf():
     pdf.cell(95, 6, f'Proyecto: {n_proyecto}'); pdf.cell(0, 6, f'Costo kWh: ${costo_kwh:.4f}', 0, 1)
     
     pdf.ln(8); pdf.set_fill_color(240, 240, 240)
-    pdf.set_font('Arial', 'B', 10); pdf.cell(0, 8, 'RESUMEN FINANCIERO (RETORNO COMBINADO)', 0, 1, 'L', fill=True)
+    pdf.set_font('Arial', 'B', 10); pdf.cell(0, 8, 'RESUMEN FINANCIERO DE RECUPERACIÓN', 0, 1, 'L', fill=True)
     pdf.set_font('Arial', '', 9); pdf.ln(2)
-    retorno_texto = f"{payback_year} años" if payback_year else "> 30 años"
-    pdf.cell(95, 6, f'Inversión Total: ${inv_final:,.2f}'); pdf.cell(0, 6, f'Retorno Estimado: {retorno_texto}', 0, 1)
-    pdf.cell(95, 6, f'Potencia Sugerida: {potencia_sug:.2f} kWp'); pdf.cell(0, 6, f'Planilla Mensual: ${pago_planilla:,.2f}', 0, 1)
+    pdf.cell(95, 6, f'Inversión Total: ${inv_final:,.2f}'); pdf.cell(0, 6, f'Retorno Estimado Real: {texto_retorno}', 0, 1)
+    pdf.cell(95, 6, f'Potencia Sugerida: {potencia_sug:.2f} kWp'); pdf.cell(0, 6, f'Esquema Beneficio: {porcentaje_distribucion:.2f}% por {años_beneficio} año(s)', 0, 1)
     
     pdf.ln(10); pdf.set_fill_color(31, 119, 180); pdf.set_text_color(255, 255, 255); pdf.set_font('Arial', 'B', 9)
     pdf.set_draw_color(50, 50, 50); pdf.set_line_width(0.2)
