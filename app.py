@@ -71,20 +71,20 @@ with c_inv2:
 with c_inv3:
     años_beneficio = st.number_input("Años a Depreciar (Beneficio)", min_value=1, max_value=10, value=2, step=1)
     
-    # El beneficio total del proyecto siempre es 10% si es comercial
-    tasa_incentivo_total = 0.10 if tipo_proyecto == "Comercial" else 0.0
-    
-    # Cálculo exacto de la distribución que pediste (1->100%, 2->50%, 3->33.33%...)
-    porcentaje_distribucion = 100.0 / años_beneficio
-    
-    st.info(f"Se aplicará el **{porcentaje_distribucion:.2f}%** anual por {años_beneficio} año(s) sobre el 10% de la inversión.")
+    # Si es comercial, repartimos el 100% de la inversión entre los años elegidos.
+    if tipo_proyecto == "Comercial":
+        porcentaje_distribucion = 100.0 / años_beneficio
+        st.info(f"Beneficio: **{porcentaje_distribucion:.2f}%** anual de la Inversión Total por {años_beneficio} año(s).")
+    else:
+        porcentaje_distribucion = 0.0
+        st.info("El beneficio tributario aplica únicamente para proyectos Comerciales.")
 
 # --- BLOQUE 3: FLUJO DE CAJA ---
 inv_final = st.session_state.inv_total
 
 # Calculamos cuánto dinero exacto en USD se suma cada año del beneficio
-# Inversión * 10% * (porcentaje / 100)
-ahorro_trib_anual_usd = inv_final * tasa_incentivo_total * (porcentaje_distribucion / 100.0)
+# Ahora es directamente la (Inversión Total) * (porcentaje / 100)
+ahorro_trib_anual_usd = inv_final * (porcentaje_distribucion / 100.0)
 
 data_rows, años, acumulados = [], [], []
 balance_acumulado, payback_year = 0, None
@@ -94,8 +94,8 @@ for año in range(1, 31):
     prod_anual = generacion_y1 * factor_deg
     ahorro_energetico = prod_anual * costo_kwh
     
-    # Aplicar el beneficio en USD solo si el año actual está dentro del rango elegido
-    beneficio_extra = ahorro_trib_anual_usd if año <= años_beneficio else 0
+    # Aplicar el beneficio en USD solo si el año actual está dentro del rango elegido y es Comercial
+    beneficio_extra = ahorro_trib_anual_usd if (año <= años_beneficio and tipo_proyecto == "Comercial") else 0
     
     total_año = ahorro_energetico + beneficio_extra
     balance_acumulado += total_año
